@@ -1,9 +1,7 @@
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-
-dotenv.config();
+import transporter from "../config/nodemailer.js";
 
 export async function register(req, res) {
     const { name, email, password } = req.body;
@@ -48,6 +46,21 @@ export async function register(req, res) {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
+
+        const mailOptions = {
+            from: process.env.APP_EMAIL,
+            to: newUser.email,
+            subject: "Welcome to MERN-Auth App !",
+            text: `Hi ${newUser.name},\n\nThank you for registering at MERN-Auth App. We're excited to have you on board!\n\nBest regards,\nMERN-Auth Team`,
+            html: `<p>Hi ${newUser.name},</p><p>Thank you for registering at MERN-Auth App. We're excited to have you on board!</p><p>Best regards,<br/>MERN-Auth Team</p>`
+        }
+
+        try {
+            await transporter.sendMail(mailOptions);
+        } catch (emailError) {
+            console.log("Email failed but user was created:", emailError.message);
+        }
+
         return res.status(201).json({
             success: true,
             message: "User registered successfully",
@@ -65,3 +78,5 @@ export async function register(req, res) {
         });
     }
 }
+
+
