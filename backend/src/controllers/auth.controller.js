@@ -80,3 +80,64 @@ export async function register(req, res) {
 }
 
 
+export async function login(req, res) {
+    const { email, password } = req.body;
+
+    if (!email?.trim() || !password?.trim()) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and password are required"
+        });
+    }
+
+    try {
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email or password"
+            });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email or password"
+            });
+        }
+
+        const token = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: "7d" }
+        );
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "User logged in successfully",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+
+}
+
