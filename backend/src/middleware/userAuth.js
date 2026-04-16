@@ -17,13 +17,14 @@ const userAuth = async (req, res, next) => {
 
         if (decodedToken.id) {
             req.body.userID = decodedToken.id;
+            req.user = { id: decodedToken.id };
         }
 
         next();
     } catch (error) {
-        return res.status(500).json({
+        return res.status(401).json({
             success: false,
-            message: error.message
+            message: "Unauthorized: Invalid or expired token"
         })
     }
 }
