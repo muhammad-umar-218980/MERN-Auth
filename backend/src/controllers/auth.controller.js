@@ -273,6 +273,8 @@ export async function verifyEmail (req,res){
 export async function isAuthenticated(req, res) {
 
     try{
+        const userID = req.user?.id || req.body?.userID;
+        const user = await User.findById(userID);
 
         return res.status(200).json({
             success: true,
@@ -342,8 +344,9 @@ export async function sendResetPasswordOTP(req, res) {
 export async function ResetPassword(req, res) {
 
     const { email, OTP , newPassword } = req.body;
+    const normalizedOtp = String(OTP ?? "").trim();
 
-    if(!email?.trim() || !OTP?.trim() || !newPassword?.trim()){
+    if(!email?.trim() || !normalizedOtp || !newPassword?.trim()){
         return res.status(400).json({
             success: false,
             message: "Email, OTP and new password are required"
@@ -362,7 +365,7 @@ export async function ResetPassword(req, res) {
             });
         }
 
-        if(user.resetOtp !== OTP){
+        if(user.resetOtp !== normalizedOtp){
             return res.status(400).json({
                 success: false,
                 message: "Invalid OTP"
