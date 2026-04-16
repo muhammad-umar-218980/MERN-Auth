@@ -162,3 +162,237 @@ export async function logout(req, res) {
         })
     }
 }
+
+
+export async function sendVerifyOTP(req, res) {
+    try{
+        const {userID} = req.body;
+
+        const user = await User.findById(userID);
+
+        if(user.isAccountVerified){
+            return res.status(400).json({
+                success: false,
+                message: "Account is already verified"
+            });
+        }
+
+        const OTP = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.verifyOtp = OTP;
+        user.verifyOtpExpireAt = Date.now() + 24*60*60*1000;
+
+        await user.save();
+
+        const mailOptions = {
+            from: process.env.APP_EMAIL,
+            to: user.email,
+            subject: "Your Account Verification OTP",
+            text: `Hi ${user.name},\n\nYour OTP for account verification is: ${OTP}\nThis OTP is valid for 24 hours.\n\nBest regards,\nMERN-Auth Team`,
+            html: `<p>Hi ${user.name},</p><p>Your OTP for account verification is: <b>${OTP}</b></p><p>This OTP is valid for 24 hours.</p><p>Best regards,<br/>MERN-Auth Team</p>`
+        }
+
+        await transporter.sendMail(mailOptions);
+
+        return res.status(200).json({
+            success: true,
+            message: "OTP sent successfully"
+        });
+
+    }catch(error){
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+
+export async function verifyEmail (req,res){
+    const {userID, OTP} = req.body;
+    const normalizedOtp = String(OTP ?? "").trim();
+
+    if(!userID || !normalizedOtp){
+        return res.status(400).json({
+            success: false,
+            message: "UserID and OTP are required"
+        });
+    }
+
+    try {
+        const user = await User.findById(userID);
+
+        if(!user){
+            return res.status(400).json({
+                success: false,
+                message: "Invalid UserID"
+            });
+        }
+
+        if(user.isAccountVerified){
+            return res.status(400).json({
+                success: false,
+                message: "Account is already verified"
+            });
+        }
+
+        if(user.verifyOtp !== normalizedOtp){
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP"
+            });
+        }
+
+        if(Date.now() > user.verifyOtpExpireAt){
+            return res.status(400).json({
+                success: false,
+                message: "OTP has expired"
+            });
+        }
+
+        user.isAccountVerified = true;
+        user.verifyOtp = '';
+        user.verifyOtpExpireAt = 0;
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Email verified successfully"
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+
+}
+
+export async function isAuthenticated(req, res) {
+
+    try{
+
+        return res.status(200).json({
+            success: true,
+            message: "User is authenticated",
+        });
+
+    }catch(error){
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+
+export async function sendResetPasswordOTP(req, res) {
+    const { email } = req.body;
+
+        if (!email?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            });
+        }
+
+        try {
+            
+            const user = await User.findOne({ email });
+
+            if (!user) {
+                return res.status(400).json({
+                    success: false,
+                    message: "User with this email does not exist"
+                });
+            }
+
+            const OTP = Math.floor(100000 + Math.random() * 900000).toString();
+
+            user.resetOtp = OTP;
+            user.resetOtpExpireAt = Date.now() + 10*60*1000;
+
+            await user.save();
+
+            const mailOptions = {
+                from: process.env.APP_EMAIL,
+                to: user.email, 
+                subject: "Your Password Reset OTP",
+                text: `Hi ${user.name},\n\nYour OTP for password reset is: ${OTP}\nThis OTP is valid for 10 minutes.\n\nBest regards,\nMERN-Auth Team`,
+                html: `<p>Hi ${user.name},</p><p>Your OTP for password reset is: <b>${OTP}</b></p><p>This OTP is valid for 10 minutes.</p><p>Best regards,<br/>MERN-Auth Team</p>`
+            }
+
+            await transporter.sendMail(mailOptions);
+
+            return res.status(200).json({
+                success: true,
+                message: "Password reset OTP sent successfully"
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error.message
+            })
+        }
+}
+
+export async function ResetPassword(req, res) {
+
+    const { email, OTP , newPassword } = req.body;
+
+    if(!email?.trim() || !OTP?.trim() || !newPassword?.trim()){
+        return res.status(400).json({
+            success: false,
+            message: "Email, OTP and new password are required"
+        });
+    }
+
+
+    try {
+        
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "User with this email does not exist"
+            });
+        }
+
+        if(user.resetOtp !== OTP){
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP"
+            });
+        }
+
+        if(Date.now() > user.resetOtpExpireAt){
+            return res.status(400).json({
+                success: false,
+                message: "OTP has expired"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        user.password = hashedPassword;
+        user.resetOtp = '';
+        user.resetOtpExpireAt = 0;
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password reset successfully"
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
