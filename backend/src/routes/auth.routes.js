@@ -9,7 +9,7 @@ authRouter.post("/login", login);
 authRouter.post("/logout", logout);
 authRouter.post("/send-verify-otp", userAuth, sendVerifyOTP);
 authRouter.post("/verify-email", userAuth, verifyEmail);
-authRouter.post("/is-authenticated", userAuth, isAuthenticated);
+authRouter.get("/is-authenticated", userAuth, isAuthenticated);
 authRouter.post("/send-reset-password-otp", sendResetPasswordOTP);
 authRouter.post("/reset-password", ResetPassword);
 
