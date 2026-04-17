@@ -4,6 +4,7 @@ const userAuth = async (req, res, next) => {
     const { token } = req.cookies;
 
     if (!token) {
+        console.error("No token provided in cookies");
         return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
 
@@ -16,12 +17,14 @@ const userAuth = async (req, res, next) => {
         }
 
         if (decodedToken.id) {
+            req.body = req.body || {};
             req.body.userID = decodedToken.id;
             req.user = { id: decodedToken.id };
         }
 
         next();
     } catch (error) {
+        console.error("JWT verification error:", error);
         return res.status(401).json({
             success: false,
             message: "Unauthorized: Invalid or expired token"
